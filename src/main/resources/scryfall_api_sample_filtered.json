@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Nissa, Worldsoul Speaker",
+    "released_at": "2025-02-14",
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/a/4/a471b306-4941-4e46-a0cb-d92895c16f8a.jpg?1782687487",
+      "large": "https://cards.scryfall.io/large/front/a/4/a471b306-4941-4e46-a0cb-d92895c16f8a.jpg?1782687487"
+      },
+    "mana_cost": "{3}{G}",
+    "cmc": 4.0,
+    "type_line": "Legendary Creature — Elf Druid",
+    "oracle_text": "Landfall — Whenever a land you control enters, you get {E}{E} (two energy counters).\nYou may pay eight {E} rather than pay the mana cost for permanent spells you cast.",
+    "power": "3",
+    "toughness": "3",
+    "colors": [
+      "G"
+    ],
+    "color_identity": [
+      "G"
+    ],
+    "reprint": false,
+    "variation": false,
+    "set": "drc",
+    "rarity": "rare",
+    "flavor_text": "\"Zendikar still seems so far off, but Chandra is my home.\""
+  }
+]
