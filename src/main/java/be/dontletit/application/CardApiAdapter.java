@@ -2,6 +2,7 @@ package be.dontletit.application;
 
 import be.dontletit.api.CardApiPort;
 import be.dontletit.api.CardResponse;
+import be.dontletit.api.SetResponse;
 import be.dontletit.domain.Card;
 import be.dontletit.domain.CardType;
 import be.dontletit.spi.CardData;
@@ -9,7 +10,11 @@ import be.dontletit.spi.CardSpiPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.IntStream;
@@ -31,6 +36,38 @@ public class CardApiAdapter implements CardApiPort {
                 .filter(card -> card.name().equalsIgnoreCase(name))
                 .map(this::toResponse)
                 .findFirst();
+    }
+
+    @Override
+    public List<String> getAllCardNames() {
+        return cardSpi.getAllCards().stream()
+                .map(CardData::name)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    @Override
+    public List<SetResponse> getFirstPrintingSets() {
+        return cardSpi.getAllCards().stream()
+                .filter(card -> card.originalPrintedSet() != null)
+                .collect(Collectors.groupingBy(CardData::originalPrintedSet))
+                .values().stream()
+                .map(CardApiAdapter::toSet)
+                .sorted(Comparator.comparing(SetResponse::releasedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(SetResponse::code))
+                .toList();
+    }
+
+    private static SetResponse toSet(List<CardData> cards) {
+        CardData any = cards.get(0);
+        LocalDate releasedAt = cards.stream()
+                .map(CardData::firstPrintedAt)
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+        return new SetResponse(any.originalPrintedSet(), any.originalPrintedSetName(), any.originalPrintedSetType(),
+                releasedAt, cards.size());
     }
 
     @Override
@@ -76,6 +113,10 @@ public class CardApiAdapter implements CardApiPort {
                 data.colorIdentity(),
                 data.sets(),
                 data.originalPrintedSet(),
+                data.originalPrintedSetName(),
+                data.originalPrintedSetType(),
+                data.firstPrintedAt(),
+                data.rarity(),
                 data.imgUrl()
         );
     }
@@ -94,6 +135,10 @@ public class CardApiAdapter implements CardApiPort {
                 card.colorIdentity(),
                 card.sets(),
                 card.originalPrintedSet(),
+                card.originalPrintedSetName(),
+                card.originalPrintedSetType(),
+                card.firstPrintedAt(),
+                card.rarity(),
                 card.imgUrl()
         );
     }

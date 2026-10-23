@@ -85,6 +85,9 @@ public class ScryfallImportService {
                     continue;
                 }
                 ScryfallCardJson card = objectMapper.readValue(line, ScryfallCardJson.class);
+                if (!mapper.isImportable(card)) {
+                    continue;
+                }
                 batch.add(mapper.toEntity(card));
                 total++;
 

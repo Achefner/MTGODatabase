@@ -2,6 +2,7 @@ package be.dontletit.infrastructure.rest;
 
 import be.dontletit.api.CardApiPort;
 import be.dontletit.api.CardResponse;
+import be.dontletit.api.SetResponse;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -18,6 +19,18 @@ public class CardController {
 
     @Inject
     CardApiPort cardApiPort;
+
+    @GET
+    @Path("/names")
+    public List<String> names() {
+        return cardApiPort.getAllCardNames();
+    }
+
+    @GET
+    @Path("/sets")
+    public List<SetResponse> sets() {
+        return cardApiPort.getFirstPrintingSets();
+    }
 
     @GET
     @Path("/random")

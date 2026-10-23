@@ -10,6 +10,7 @@ public class ScryfallCardJson {
 
     public String id;
     public String name;
+    public String layout;
 
     @JsonProperty("mana_cost")
     public String manaCost;
@@ -29,7 +30,18 @@ public class ScryfallCardJson {
     @JsonProperty("image_uris")
     public ScryfallImageUris imageUris;
 
+    @JsonProperty("card_faces")
+    public List<ScryfallCardFaceJson> cardFaces;
+
     public String set;
+
+    @JsonProperty("set_name")
+    public String setName;
+
+    @JsonProperty("set_type")
+    public String setType;
+
+    public Boolean promo;
 
     @JsonProperty("released_at")
     public String releasedAt;

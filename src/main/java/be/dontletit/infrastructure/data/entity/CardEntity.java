@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Entity
@@ -49,6 +50,20 @@ public class CardEntity extends PanacheEntityBase {
 
     @Column(name = "original_printed_set")
     public String originalPrintedSet;
+
+    @Column(name = "set_name")
+    public String setName;
+
+    @Column(name = "set_type")
+    public String setType;
+
+    @Column(nullable = false)
+    public boolean promo;
+
+    @Column(name = "released_at")
+    public LocalDate releasedAt;
+
+    public String rarity;
 
     @Column(name = "img_url")
     public String imgUrl;

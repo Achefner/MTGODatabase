@@ -47,18 +47,31 @@ be.dontletit/
 
 **Dependency rule**: domain and ports have zero framework/infra imports. Only `application/` and `infrastructure/` touch Quarkus/Jakarta annotations.
 
-**Storage model**: one `CardEntity` row per Scryfall printing (id = Scryfall printing UUID), not per unique card name. `PostgresCardRepository.getAllCards()` groups rows by name and unions each printing's set into `CardData.sets()` — don't reintroduce a raw `FROM CardEntity` query without that grouping step or `sets` collapses back to one element per card.
+**Storage model**: one `CardEntity` row per Scryfall printing (id = Scryfall printing UUID), not per unique card name. `PostgresCardRepository.getAllCards()` groups rows by name and unions each printing's set into `CardData.sets()` — don't reintroduce a raw `FROM CardEntity` query without that grouping step or `sets` collapses back to one element per card. The canonical printing of a group (its `id`, `originalPrintedSet` + name/type, `firstPrintedAt`, `rarity`, `imgUrl`) is the earliest-released **non-promo** printing (promo flag first, then `releasedAt` nulls last, then id); promo printings (prerelease, judge, buy-a-box — Scryfall `promo: true`) only win when the card was never printed anywhere else. Without that rule prerelease promos, dated before the main set, become the "first set".
 
 **Unknown Scryfall types**: `CardApiAdapter.toDomain` filters `data.types()` against `CardType` before `valueOf`, silently dropping tokens that aren't real gameplay types (e.g. Scryfall's `Card` for Art Series objects, or newer types like `Attraction`/`Kindred`/`Stickers` not yet in the enum). Don't swap that back to a bare `.map(CardType::valueOf)` — it throws on live bulk data.
 
 ## Endpoints
 
+- `GET /cards/names` — returns every distinct card name, sorted (~38k entries)
+- `GET /cards/sets` — sets in which at least one card was first printed: code, name, Scryfall `set_type`, release date (earliest first printing), card count; chronological
 - `GET /cards/random` — returns a random card
 - `GET /cards/random/{count}` — returns `count` random cards
 - `GET /cards/{name}` — returns card by name (case-insensitive), 404 if missing
 - `POST /admin/scryfall/import` — downloads Scryfall's default-cards bulk data and imports into the DB
 
+## CORS
+
+`dev` and `local` profiles allow any origin (`quarkus.http.cors.*` in `application.properties`).
+Browsers normally don't hit this service directly any more — front ends go through a bridge
+service such as `../MTGOEnchantWordleService` — so this is only a convenience for ad-hoc testing.
+`prod` has no CORS config.
+
 ## Scryfall import notes
+
+- Objects whose `layout` is `art_series`, `token`, `double_faced_token` or `emblem` are skipped (`ScryfallCardMapper.isImportable`) — Art Series objects are named "X // X" and polluted the names list with thousands of fake cards. Reversible cards named "X // X" are stored as "X"; genuine two-face names ("Delver of Secrets // Insectile Aberration") are kept as Scryfall writes them.
+- Multi-face cards are stored as the game sees them: `ScryfallCardMapper.frontFace` takes mana cost, type line, text, power/toughness and image from `card_faces[0]` for transform / modal DFC / adventure / flip / reversible layouts (Brazen Borrower // Petty Theft is a {1}{U}{U} Creature — Faerie Rogue). Split and aftermath cards keep Scryfall's combined top-level fields (rule 709.3), and their type line "Sorcery // Instant" is parsed face by face and merged without duplicates. Names keep both faces as Scryfall writes them.
+- Tests bind `quarkus.http.test-port=8090` so `mvn test` works while the bridge service dev server holds :8081.
 
 - Bulk metadata (`GET /bulk-data/default-cards`) and the actual download both require an explicit `Accept` header — Scryfall 400s Java's `HttpClient` without one (curl sends `Accept: */*` by default, which is why a plain curl check can look fine while the app's request fails).
 - The download itself is gzip-compressed JSONL (`jsonl_download_uri` field, one JSON object per line) — not a plain JSON array behind `download_uri` (that field no longer exists in Scryfall's response).

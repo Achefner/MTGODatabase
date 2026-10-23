@@ -1,10 +1,12 @@
 package be.dontletit.application;
 
 import be.dontletit.api.CardResponse;
+import be.dontletit.api.SetResponse;
 import be.dontletit.stubs.CardSpiStub;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,7 +27,7 @@ class CardApiAdapterTest {
     @Test
     void getAllCards_returnsAllStubCards() {
         assertEquals(ALL_CARDS, spiStub.getAllCards());
-        assertEquals(2, spiStub.getAllCards().size());
+        assertEquals(5, spiStub.getAllCards().size());
     }
 
     @Test
@@ -61,6 +63,53 @@ class CardApiAdapterTest {
         assertEquals(3, cards.size());
         List<String> knownNames = ALL_CARDS.stream().map(c -> c.name()).toList();
         cards.forEach(card -> assertTrue(knownNames.contains(card.name())));
+    }
+
+    @Test
+    void getCardByName_exposesRarityAndFirstPrintedAt() {
+        CardResponse card = adapter.getCardByName("Lightning Bolt").orElseThrow();
+        assertEquals("COMMON", card.rarity());
+        assertEquals(LIGHTNING_BOLT.firstPrintedAt(), card.firstPrintedAt());
+    }
+
+    @Test
+    void getAllCardNames_returnsDistinctSortedNames() {
+        List<String> names = adapter.getAllCardNames();
+        assertEquals(List.of("Lightning Bolt", "Llanowar Elves", "Pack Rat", "Serra Angel", "Undated"), names);
+    }
+
+    @Test
+    void getCardByName_exposesOriginalSetNameAndType() {
+        CardResponse card = adapter.getCardByName("Pack Rat").orElseThrow();
+        assertEquals("Return to Ravnica", card.originalPrintedSetName());
+        assertEquals("expansion", card.originalPrintedSetType());
+    }
+
+    @Test
+    void getFirstPrintingSets_groupsCardsByOriginalSet_chronologically() {
+        List<SetResponse> sets = adapter.getFirstPrintingSets();
+
+        assertEquals(2, sets.size());
+        SetResponse lea = sets.get(0);
+        assertEquals("LEA", lea.code());
+        assertEquals("Limited Edition Alpha", lea.name());
+        assertEquals("core", lea.type());
+        assertEquals(LocalDate.of(1993, 8, 5), lea.releasedAt());
+        assertEquals(3, lea.cardCount());
+        SetResponse rtr = sets.get(1);
+        assertEquals("RTR", rtr.code());
+        assertEquals(LocalDate.of(2012, 10, 5), rtr.releasedAt());
+        assertEquals(1, rtr.cardCount());
+    }
+
+    @Test
+    void getFirstPrintingSets_emptyRepository_returnsEmptyList() {
+        assertTrue(new CardApiAdapter(List::of).getFirstPrintingSets().isEmpty());
+    }
+
+    @Test
+    void getAllCardNames_emptyRepository_returnsEmptyList() {
+        assertTrue(new CardApiAdapter(List::of).getAllCardNames().isEmpty());
     }
 
     @Test

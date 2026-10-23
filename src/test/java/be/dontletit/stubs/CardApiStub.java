@@ -2,7 +2,9 @@ package be.dontletit.stubs;
 
 import be.dontletit.api.CardApiPort;
 import be.dontletit.api.CardResponse;
+import be.dontletit.api.SetResponse;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +15,7 @@ public class CardApiStub implements CardApiPort {
             "test-card", "Test Card", "{1}",
             List.of("INSTANT"),
             "Does nothing.",
-            null, null, List.of(), List.of(), "", List.of("TST"), "TST", null);
+            null, null, List.of(), List.of(), "", List.of("TST"), "TST", "Test Set", "expansion", LocalDate.of(2020, 1, 1), "RARE", null);
 
     @Override
     public Optional<CardResponse> getCardByName(String name) {
@@ -21,6 +23,16 @@ public class CardApiStub implements CardApiPort {
             return Optional.of(FIXED_CARD);
         }
         return Optional.empty();
+    }
+
+    @Override
+    public List<String> getAllCardNames() {
+        return List.of(FIXED_CARD.name());
+    }
+
+    @Override
+    public List<SetResponse> getFirstPrintingSets() {
+        return List.of(new SetResponse("TST", "Test Set", "expansion", LocalDate.of(2020, 1, 1), 1));
     }
 
     @Override

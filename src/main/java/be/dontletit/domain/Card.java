@@ -1,5 +1,6 @@
 package be.dontletit.domain;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public record Card(
@@ -15,5 +16,9 @@ public record Card(
         String colorIdentity,
         List<String> sets,
         String originalPrintedSet,
+        String originalPrintedSetName,
+        String originalPrintedSetType,
+        LocalDate firstPrintedAt,
+        String rarity,
         String imgUrl
 ) {}

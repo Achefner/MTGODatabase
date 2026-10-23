@@ -1,5 +1,6 @@
 package be.dontletit.spi;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public record CardData(
@@ -15,5 +16,9 @@ public record CardData(
         String colorIdentity,
         List<String> sets,
         String originalPrintedSet,
+        String originalPrintedSetName,
+        String originalPrintedSetType,
+        LocalDate firstPrintedAt,
+        String rarity,
         String imgUrl
 ) {}

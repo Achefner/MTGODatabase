@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -30,7 +31,13 @@ public class PostgresCardRepository implements CardSpiPort {
     }
 
     private CardData toData(List<CardEntity> printings) {
-        CardEntity canonical = printings.get(0);
+        // First printing = earliest release among regular printings; promo printings
+        // (prerelease, judge, buy-a-box...) are only used when nothing else exists.
+        CardEntity canonical = printings.stream()
+                .min(Comparator.comparing((CardEntity e) -> e.promo)
+                        .thenComparing(e -> e.releasedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(e -> e.id))
+                .orElseThrow();
         List<String> sets = printings.stream()
                 .map(e -> e.originalPrintedSet)
                 .filter(Objects::nonNull)
@@ -51,6 +58,10 @@ public class PostgresCardRepository implements CardSpiPort {
                 canonical.colorIdentity,
                 sets,
                 canonical.originalPrintedSet,
+                canonical.setName,
+                canonical.setType,
+                canonical.releasedAt,
+                canonical.rarity,
                 canonical.imgUrl
         );
     }
