@@ -21,7 +21,7 @@ mvn test -Dtest=CardResourceTest
 ## Profiles
 
 - **dev** (default, no flag needed) — H2 in-memory, schema `drop-and-create` on every start. No setup required.
-- **local** — postgres via docker-compose (`docker compose up -d`, db/user/pass `mtgodb`/`mtgo`/`mtgo` on 5432), schema `update`. Run with `-Dquarkus.profile=local` or `QUARKUS_PROFILE=local`.
+- **local** — postgres via docker-compose (`docker compose up -d`, db/user/pass `mtgodb`/`mtgo`/`mtgo` on host port **5433** — 5432 is taken by a system postgres on this machine), schema `update`. This is the profile to use day to day: cards and collections survive restarts. Run with `-Dquarkus.profile=local` or `QUARKUS_PROFILE=local`.
 - **prod** — postgres, same creds/URL as `local` but expects an externally-managed instance (no docker-compose).
 
 All three write through `PostgresCardRepository` — same JPA entity, only the datasource differs.
@@ -32,17 +32,18 @@ Hexagonal architecture — domain is isolated from framework and infrastructure 
 
 ```
 be.dontletit/
-├── domain/          # pure domain: Card, CardType (no framework annotations)
-├── api/             # inbound port: CardApiPort (getCardByName, getRandomCard, getRandomCards)
-├── spi/             # outbound port: CardSpiPort (getAllCards), CardData record
-├── application/     # CardApiAdapter: implements CardApiPort, injects CardSpiPort
+├── domain/          # pure domain: Card, CardType; CardCollection, CollectionEntry, CollectionType (DECK/CUBE/MISC)
+├── api/             # inbound ports: CardApiPort, CollectionApiPort (+ request/response records, UnknownCardsException)
+├── spi/             # outbound ports: CardSpiPort (getAllCards), CollectionSpiPort (save/findAll/findById/delete) + data records
+├── application/     # CardApiAdapter, CollectionApiAdapter (name resolution, validation), CardMapping, DecklistFormat (text parse/format)
 └── infrastructure/
-    ├── rest/        # CardController (/cards), ScryfallImportController (/admin/scryfall)
+    ├── rest/        # CardController (/cards), CollectionController (/collections), ScryfallImportController (/admin/scryfall)
     └── data/
-        ├── PostgresCardRepository   # implements CardSpiPort — JPA-backed, active in dev/local/prod
-        ├── InMemoryCardRepository   # @DefaultBean fallback sample data, only used if no other CardSpiPort bean exists
-        ├── entity/                 # CardEntity (JPA), StringListConverter
-        └── scryfall/                # bulk import: ScryfallImportService, ScryfallCardMapper, JSON DTOs
+        ├── PostgresCardRepository        # implements CardSpiPort — JPA-backed, active in dev/local/prod
+        ├── PostgresCollectionRepository  # implements CollectionSpiPort — CollectionEntity + element collection of entries
+        ├── InMemoryCardRepository        # @DefaultBean fallback sample data, only used if no other CardSpiPort bean exists
+        ├── entity/                       # CardEntity, CollectionEntity, CollectionEntryEmbeddable, StringListConverter
+        └── scryfall/                     # bulk import: ScryfallImportService, ScryfallCardMapper, JSON DTOs
 ```
 
 **Dependency rule**: domain and ports have zero framework/infra imports. Only `application/` and `infrastructure/` touch Quarkus/Jakarta annotations.
@@ -59,6 +60,18 @@ be.dontletit/
 - `GET /cards/random/{count}` — returns `count` random cards
 - `GET /cards/{name}` — returns card by name (case-insensitive), 404 if missing
 - `POST /admin/scryfall/import` — downloads Scryfall's default-cards bulk data and imports into the DB
+
+### Collections (decks, cubes, misc)
+
+- `POST /collections` — JSON `{name, type: DECK|CUBE|MISC, entries: [{name, quantity?}]}` → 201 + Location
+- `POST /collections/import?name=&type=` — body `text/plain` decklist ("4 Lightning Bolt" / "Lightning Bolt" per line, `#` and `//` comments, section headers and Arena "(SET) 123" suffixes ignored) → 201
+- `GET /collections` — summaries (id, name, type, cardCount)
+- `GET /collections/{id}` — entries (canonical card name + quantity)
+- `GET /collections/{id}/export` — `text/plain` decklist, one `N Name` line per entry (round-trips with import)
+- `GET /collections/{id}/cards` — full `CardResponse` list expanded by quantity, in collection order
+- `PUT /collections/{id}` — replace name, type and entries; `DELETE /collections/{id}` → 204
+- Entry names are resolved case-insensitively against the card table, also by front-face name ("Brazen Borrower" → "Brazen Borrower // Petty Theft"); duplicates are merged. Unknown names → 400 `{"unknownCards": [...]}` and nothing is stored.
+- Collections live in the same datasource as cards: with the default `dev` profile (H2 in-memory, drop-and-create) they vanish on restart — use `local`/`prod` (postgres) to keep them.
 
 ## CORS
 
