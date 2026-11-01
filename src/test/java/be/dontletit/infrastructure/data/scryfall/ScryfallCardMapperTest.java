@@ -1,6 +1,6 @@
 package be.dontletit.infrastructure.data.scryfall;
 
-import be.dontletit.infrastructure.data.entity.CardEntity;
+import be.dontletit.spi.CardPrintingData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -132,10 +132,10 @@ class ScryfallCardMapperTest {
         assertNull(mapper.parsePowerToughness(null));
     }
 
-    // --- toEntity ---
+    // --- toPrinting ---
 
     @Test
-    void toEntity_creature_mapsAllFields() {
+    void toPrinting_creature_mapsAllFields() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "abc-123";
         card.name = "Storm Crow";
@@ -155,125 +155,123 @@ class ScryfallCardMapperTest {
         uris.large = "https://example.com/storm-crow.jpg";
         card.imageUris = uris;
 
-        CardEntity entity = mapper.toEntity(card);
+        CardPrintingData printing = mapper.toPrinting(card);
 
-        assertEquals("abc-123", entity.id);
-        assertEquals("Storm Crow", entity.name);
-        assertEquals("{1}{U}", entity.manaCost);
-        assertEquals(List.of("CREATURE"), entity.types);
-        assertEquals(List.of("Bird"), entity.subtypes);
-        assertEquals("Flying", entity.text);
-        assertEquals(1.0, entity.power);
-        assertEquals(2.0, entity.toughness);
-        assertEquals("U", entity.colorIdentity);
-        assertEquals(List.of("9ed"), entity.sets);
-        assertEquals("9ed", entity.originalPrintedSet);
-        assertEquals("https://example.com/storm-crow.jpg", entity.imgUrl);
-        assertEquals("COMMON", entity.rarity);
-        assertEquals(LocalDate.of(2005, 7, 29), entity.releasedAt);
-        assertEquals("Ninth Edition", entity.setName);
-        assertEquals("core", entity.setType);
-        assertTrue(entity.promo);
+        assertEquals("abc-123", printing.id());
+        assertEquals("Storm Crow", printing.name());
+        assertEquals("{1}{U}", printing.manaCost());
+        assertEquals(List.of("CREATURE"), printing.types());
+        assertEquals(List.of("Bird"), printing.subtypes());
+        assertEquals("Flying", printing.text());
+        assertEquals(1.0, printing.power());
+        assertEquals(2.0, printing.toughness());
+        assertEquals("U", printing.colorIdentity());
+        assertEquals("9ed", printing.set());
+        assertEquals("https://example.com/storm-crow.jpg", printing.imgUrl());
+        assertEquals("COMMON", printing.rarity());
+        assertEquals(LocalDate.of(2005, 7, 29), printing.releasedAt());
+        assertEquals("Ninth Edition", printing.setName());
+        assertEquals("core", printing.setType());
+        assertTrue(printing.promo());
     }
 
     @Test
-    void toEntity_missingPromoFlag_isNotPromo() {
+    void toPrinting_missingPromoFlag_isNotPromo() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "x";
         card.name = "X";
         card.typeLine = "Instant";
 
-        CardEntity entity = mapper.toEntity(card);
+        CardPrintingData printing = mapper.toPrinting(card);
 
-        assertFalse(entity.promo);
-        assertNull(entity.setName);
-        assertNull(entity.setType);
+        assertFalse(printing.promo());
+        assertNull(printing.setName());
+        assertNull(printing.setType());
     }
 
     @Test
-    void toEntity_nullRarityAndReleaseDate_stayNull() {
+    void toPrinting_nullRarityAndReleaseDate_stayNull() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "bare";
         card.name = "Bare";
         card.typeLine = "Instant";
 
-        CardEntity entity = mapper.toEntity(card);
+        CardPrintingData printing = mapper.toPrinting(card);
 
-        assertNull(entity.rarity);
-        assertNull(entity.releasedAt);
+        assertNull(printing.rarity());
+        assertNull(printing.releasedAt());
     }
 
     @Test
-    void toEntity_unparseableReleaseDate_isNull() {
+    void toPrinting_unparseableReleaseDate_isNull() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "bad-date";
         card.name = "Bad Date";
         card.typeLine = "Instant";
         card.releasedAt = "not-a-date";
 
-        assertNull(mapper.toEntity(card).releasedAt);
+        assertNull(mapper.toPrinting(card).releasedAt());
     }
 
     @Test
-    void toEntity_noImageUris_imgUrlNull() {
+    void toPrinting_noImageUris_imgUrlNull() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "no-image";
         card.name = "Faceless Card";
         card.typeLine = "Instant";
         card.imageUris = null;
 
-        CardEntity entity = mapper.toEntity(card);
+        CardPrintingData printing = mapper.toPrinting(card);
 
-        assertNull(entity.imgUrl);
+        assertNull(printing.imgUrl());
     }
 
     @Test
-    void toEntity_multicolorIdentity_joined() {
+    void toPrinting_multicolorIdentity_joined() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "multi";
         card.name = "Multicolor";
         card.typeLine = "Creature — Human";
         card.colorIdentity = List.of("W", "U", "B");
 
-        CardEntity entity = mapper.toEntity(card);
+        CardPrintingData printing = mapper.toPrinting(card);
 
-        assertEquals("WUB", entity.colorIdentity);
+        assertEquals("WUB", printing.colorIdentity());
     }
 
     @Test
-    void toEntity_nullSet_emptySets() {
+    void toPrinting_nullSet_emptySets() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "no-set";
         card.name = "Token";
         card.typeLine = "Creature — Saproling";
         card.set = null;
 
-        CardEntity entity = mapper.toEntity(card);
+        CardPrintingData printing = mapper.toPrinting(card);
 
-        assertEquals(List.of(), entity.sets);
-        assertNull(entity.originalPrintedSet);
+        assertNull(printing.set());
     }
 
     // --- names of multi-face objects ---
 
     @Test
-    void toEntity_identicalFaceNames_collapsedToOneName() {
+    void toPrinting_identicalFaceNames_collapsedToOneName() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "reversible";
         card.name = "Zndrsplt, Eye of Wisdom // Zndrsplt, Eye of Wisdom";
         card.typeLine = "Legendary Creature — Homunculus // Legendary Creature — Homunculus";
 
-        assertEquals("Zndrsplt, Eye of Wisdom", mapper.toEntity(card).name);
+        assertEquals("Zndrsplt, Eye of Wisdom", mapper.toPrinting(card).name());
     }
 
     @Test
-    void toEntity_differentFaceNames_keptAsScryfallNamesThem() {
+    void toPrinting_differentFaceNames_keptAsScryfallNamesThem() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "dfc";
         card.name = "Delver of Secrets // Insectile Aberration";
         card.typeLine = "Creature — Human Wizard // Creature — Human Insect";
 
-        assertEquals("Delver of Secrets // Insectile Aberration", mapper.toEntity(card).name);
+        assertEquals("Delver of Secrets // Insectile Aberration", mapper.toPrinting(card).name());
     }
 
     // --- isImportable ---
@@ -306,7 +304,7 @@ class ScryfallCardMapperTest {
     }
 
     @Test
-    void toEntity_adventure_usesTheCreatureFaceOnly() {
+    void toPrinting_adventure_usesTheCreatureFaceOnly() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "brazen"; card.name = "Brazen Borrower // Petty Theft"; card.layout = "adventure";
         card.manaCost = "{1}{U}{U} // {1}{U}";
@@ -318,20 +316,20 @@ class ScryfallCardMapperTest {
                 face("Brazen Borrower", "{1}{U}{U}", "Creature — Faerie Rogue", "Flash\nFlying", "3", "1", null),
                 face("Petty Theft", "{1}{U}", "Instant — Adventure", "Return target nonland permanent...", null, null, null));
 
-        CardEntity entity = mapper.toEntity(card);
+        CardPrintingData printing = mapper.toPrinting(card);
 
-        assertEquals("Brazen Borrower // Petty Theft", entity.name);
-        assertEquals("{1}{U}{U}", entity.manaCost);
-        assertEquals(List.of("CREATURE"), entity.types);
-        assertEquals(List.of("Faerie", "Rogue"), entity.subtypes);
-        assertEquals("Flash\nFlying", entity.text);
-        assertEquals(3.0, entity.power);
-        assertEquals(1.0, entity.toughness);
-        assertEquals("https://img/brazen.jpg", entity.imgUrl);
+        assertEquals("Brazen Borrower // Petty Theft", printing.name());
+        assertEquals("{1}{U}{U}", printing.manaCost());
+        assertEquals(List.of("CREATURE"), printing.types());
+        assertEquals(List.of("Faerie", "Rogue"), printing.subtypes());
+        assertEquals("Flash\nFlying", printing.text());
+        assertEquals(3.0, printing.power());
+        assertEquals(1.0, printing.toughness());
+        assertEquals("https://img/brazen.jpg", printing.imgUrl());
     }
 
     @Test
-    void toEntity_transform_usesTheFrontFaceAndItsImage() {
+    void toPrinting_transform_usesTheFrontFaceAndItsImage() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "delver"; card.name = "Delver of Secrets // Insectile Aberration"; card.layout = "transform";
         card.manaCost = null;
@@ -341,18 +339,18 @@ class ScryfallCardMapperTest {
                 face("Delver of Secrets", "{U}", "Creature — Human Wizard", "At the beginning of your upkeep...", "1", "1", "https://img/delver-front.jpg"),
                 face("Insectile Aberration", "", "Creature — Human Insect", "Flying", "3", "2", "https://img/delver-back.jpg"));
 
-        CardEntity entity = mapper.toEntity(card);
+        CardPrintingData printing = mapper.toPrinting(card);
 
-        assertEquals("{U}", entity.manaCost);
-        assertEquals(List.of("CREATURE"), entity.types);
-        assertEquals(List.of("Human", "Wizard"), entity.subtypes);
-        assertEquals(1.0, entity.power);
-        assertEquals(1.0, entity.toughness);
-        assertEquals("https://img/delver-front.jpg", entity.imgUrl);
+        assertEquals("{U}", printing.manaCost());
+        assertEquals(List.of("CREATURE"), printing.types());
+        assertEquals(List.of("Human", "Wizard"), printing.subtypes());
+        assertEquals(1.0, printing.power());
+        assertEquals(1.0, printing.toughness());
+        assertEquals("https://img/delver-front.jpg", printing.imgUrl());
     }
 
     @Test
-    void toEntity_splitCard_keepsTheCombinedCharacteristics() {
+    void toPrinting_splitCard_keepsTheCombinedCharacteristics() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "spring-mind"; card.name = "Spring // Mind"; card.layout = "split";
         card.manaCost = "{2}{G} // {4}{G}{U}";
@@ -363,22 +361,22 @@ class ScryfallCardMapperTest {
                 face("Spring", "{2}{G}", "Sorcery", "Search...", null, null, null),
                 face("Mind", "{4}{G}{U}", "Instant", "Draw two cards.", null, null, null));
 
-        CardEntity entity = mapper.toEntity(card);
+        CardPrintingData printing = mapper.toPrinting(card);
 
-        assertEquals("{2}{G} // {4}{G}{U}", entity.manaCost);
-        assertEquals(List.of("SORCERY", "INSTANT"), entity.types);
-        assertEquals("https://img/spring-mind.jpg", entity.imgUrl);
+        assertEquals("{2}{G} // {4}{G}{U}", printing.manaCost());
+        assertEquals(List.of("SORCERY", "INSTANT"), printing.types());
+        assertEquals("https://img/spring-mind.jpg", printing.imgUrl());
     }
 
     @Test
-    void toEntity_singleFaceWithEmptyFacesList_unchanged() {
+    void toPrinting_singleFaceWithEmptyFacesList_unchanged() {
         ScryfallCardJson card = new ScryfallCardJson();
         card.id = "bolt"; card.name = "Lightning Bolt"; card.layout = "normal";
         card.manaCost = "{R}"; card.typeLine = "Instant"; card.cardFaces = List.of();
 
-        CardEntity entity = mapper.toEntity(card);
+        CardPrintingData printing = mapper.toPrinting(card);
 
-        assertEquals("{R}", entity.manaCost);
-        assertEquals(List.of("INSTANT"), entity.types);
+        assertEquals("{R}", printing.manaCost());
+        assertEquals(List.of("INSTANT"), printing.types());
     }
 }

@@ -104,17 +104,17 @@ class CardApiAdapterTest {
 
     @Test
     void getFirstPrintingSets_emptyRepository_returnsEmptyList() {
-        assertTrue(new CardApiAdapter(List::of).getFirstPrintingSets().isEmpty());
+        assertTrue(new CardApiAdapter(new CardSpiStub(List.of())).getFirstPrintingSets().isEmpty());
     }
 
     @Test
     void getAllCardNames_emptyRepository_returnsEmptyList() {
-        assertTrue(new CardApiAdapter(List::of).getAllCardNames().isEmpty());
+        assertTrue(new CardApiAdapter(new CardSpiStub(List.of())).getAllCardNames().isEmpty());
     }
 
     @Test
     void getRandomCard_emptyRepository_throwsIllegalState() {
-        CardApiAdapter emptyAdapter = new CardApiAdapter(List::of);
+        CardApiAdapter emptyAdapter = new CardApiAdapter(new CardSpiStub(List.of()));
         assertThrows(IllegalStateException.class, emptyAdapter::getRandomCard);
     }
 }

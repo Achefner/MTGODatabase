@@ -1,6 +1,6 @@
 package be.dontletit.infrastructure.data.scryfall;
 
-import be.dontletit.infrastructure.data.entity.CardEntity;
+import be.dontletit.spi.CardPrintingData;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.time.LocalDate;
@@ -25,31 +25,28 @@ public class ScryfallCardMapper {
         return card.layout == null || !NON_CARD_LAYOUTS.contains(card.layout);
     }
 
-    public CardEntity toEntity(ScryfallCardJson card) {
+    public CardPrintingData toPrinting(ScryfallCardJson card) {
         ScryfallCardFaceJson front = frontFace(card);
         ParsedTypeLine parsed = parseTypeLine(front != null ? front.typeLine : card.typeLine);
-
-        CardEntity entity = new CardEntity();
-        entity.id = card.id;
-        entity.name = cardName(card.name);
-        entity.manaCost = front != null && front.manaCost != null ? front.manaCost : card.manaCost;
-        entity.types = parsed.types();
-        entity.surtypes = parsed.surtypes();
-        entity.subtypes = parsed.subtypes();
-        entity.text = front != null ? front.oracleText : card.oracleText;
-        entity.power = parsePowerToughness(front != null ? front.power : card.power);
-        entity.toughness = parsePowerToughness(front != null ? front.toughness : card.toughness);
-        entity.colorIdentity = card.colorIdentity != null ? String.join("", card.colorIdentity) : "";
-        entity.sets = card.set != null ? List.of(card.set) : List.of();
-        entity.originalPrintedSet = card.set;
-        entity.imgUrl = front != null && front.imageUris != null ? front.imageUris.large
-                : card.imageUris != null ? card.imageUris.large : null;
-        entity.setName = card.setName;
-        entity.setType = card.setType;
-        entity.promo = Boolean.TRUE.equals(card.promo);
-        entity.rarity = card.rarity != null ? card.rarity.toUpperCase() : null;
-        entity.releasedAt = parseDate(card.releasedAt);
-        return entity;
+        return new CardPrintingData(
+                card.id,
+                cardName(card.name),
+                front != null && front.manaCost != null ? front.manaCost : card.manaCost,
+                parsed.types(),
+                parsed.surtypes(),
+                parsed.subtypes(),
+                front != null ? front.oracleText : card.oracleText,
+                parsePowerToughness(front != null ? front.power : card.power),
+                parsePowerToughness(front != null ? front.toughness : card.toughness),
+                card.colorIdentity != null ? String.join("", card.colorIdentity) : "",
+                card.set,
+                card.setName,
+                card.setType,
+                Boolean.TRUE.equals(card.promo),
+                parseDate(card.releasedAt),
+                card.rarity != null ? card.rarity.toUpperCase() : null,
+                front != null && front.imageUris != null ? front.imageUris.large
+                        : card.imageUris != null ? card.imageUris.large : null);
     }
 
     /**

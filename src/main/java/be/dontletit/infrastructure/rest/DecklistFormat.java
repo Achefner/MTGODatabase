@@ -1,4 +1,4 @@
-package be.dontletit.application;
+package be.dontletit.infrastructure.rest;
 
 import be.dontletit.api.CollectionEntryRequest;
 import be.dontletit.api.CollectionEntryResponse;
@@ -10,7 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The plain-text decklist format most tools exchange: one card per line, optionally
+ * The plain-text decklist format most tools exchange (a wire format of the REST adapter): one card per line, optionally
  * prefixed with a quantity ("4 Lightning Bolt", "4x Lightning Bolt", "Lightning Bolt").
  * Blank lines, "#" / "//" comments, section headers and Arena's "(SET) 123" suffix are ignored.
  */

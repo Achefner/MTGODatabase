@@ -9,6 +9,7 @@ import be.dontletit.api.CollectionSummaryResponse;
 import be.dontletit.api.UnknownCardsException;
 import be.dontletit.domain.CardCollection;
 import be.dontletit.domain.CollectionEntry;
+import be.dontletit.api.CollectionKind;
 import be.dontletit.domain.CollectionType;
 import be.dontletit.spi.CardData;
 import be.dontletit.spi.CardSpiPort;
@@ -41,13 +42,13 @@ public class CollectionApiAdapter implements CollectionApiPort {
     }
 
     @Override
-    public CollectionResponse create(String name, CollectionType type, List<CollectionEntryRequest> entries) {
+    public CollectionResponse create(String name, CollectionKind type, List<CollectionEntryRequest> entries) {
         CardCollection collection = validate(UUID.randomUUID().toString(), name, type, entries);
         return toResponse(collections.save(toData(collection)));
     }
 
     @Override
-    public Optional<CollectionResponse> replace(String id, String name, CollectionType type, List<CollectionEntryRequest> entries) {
+    public Optional<CollectionResponse> replace(String id, String name, CollectionKind type, List<CollectionEntryRequest> entries) {
         if (collections.findById(id).isEmpty()) return Optional.empty();
         CardCollection collection = validate(id, name, type, entries);
         return Optional.of(toResponse(collections.save(toData(collection))));
@@ -57,7 +58,7 @@ public class CollectionApiAdapter implements CollectionApiPort {
     public List<CollectionSummaryResponse> list() {
         return collections.findAll().stream()
                 .map(CollectionApiAdapter::toDomain)
-                .map(c -> new CollectionSummaryResponse(c.id(), c.name(), c.type(), c.cardCount()))
+                .map(c -> new CollectionSummaryResponse(c.id(), c.name(), toKind(c.type()), c.cardCount()))
                 .toList();
     }
 
@@ -87,7 +88,7 @@ public class CollectionApiAdapter implements CollectionApiPort {
     }
 
     /** Checks the inputs, resolves every entry to a canonical card name and merges duplicates. */
-    private CardCollection validate(String id, String name, CollectionType type, List<CollectionEntryRequest> entries) {
+    private CardCollection validate(String id, String name, CollectionKind type, List<CollectionEntryRequest> entries) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("Collection name must not be blank");
         if (type == null) throw new IllegalArgumentException("Collection type must be one of DECK, CUBE, MISC");
 
@@ -109,7 +110,7 @@ public class CollectionApiAdapter implements CollectionApiPort {
         List<CollectionEntry> resolved = merged.entrySet().stream()
                 .map(e -> new CollectionEntry(e.getKey(), e.getValue()))
                 .toList();
-        return new CardCollection(id, name.trim(), type, resolved);
+        return new CardCollection(id, name.trim(), CollectionType.valueOf(type.name()), resolved);
     }
 
     /** lower-cased full name, and lower-cased front-face name, -> canonical full name. */
@@ -138,7 +139,11 @@ public class CollectionApiAdapter implements CollectionApiPort {
 
     private static CollectionResponse toResponse(CollectionData data) {
         CardCollection collection = toDomain(data);
-        return new CollectionResponse(collection.id(), collection.name(), collection.type(), collection.cardCount(),
+        return new CollectionResponse(collection.id(), collection.name(), toKind(collection.type()), collection.cardCount(),
                 collection.entries().stream().map(e -> new CollectionEntryResponse(e.cardName(), e.quantity())).toList());
+    }
+
+    private static CollectionKind toKind(CollectionType type) {
+        return CollectionKind.valueOf(type.name());
     }
 }

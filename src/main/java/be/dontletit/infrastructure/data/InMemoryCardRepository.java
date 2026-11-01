@@ -1,6 +1,7 @@
 package be.dontletit.infrastructure.data;
 
 import be.dontletit.spi.CardData;
+import be.dontletit.spi.CardPrintingData;
 import be.dontletit.spi.CardSpiPort;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -42,5 +43,11 @@ public class InMemoryCardRepository implements CardSpiPort {
     @Override
     public List<CardData> getAllCards() {
         return CARDS;
+    }
+
+    /** The sample cards are fixed: importing needs the postgres repository. */
+    @Override
+    public void savePrintings(List<CardPrintingData> printings) {
+        throw new UnsupportedOperationException("The in-memory sample cards cannot be changed");
     }
 }

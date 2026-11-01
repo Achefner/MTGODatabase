@@ -2,6 +2,7 @@ package be.dontletit.infrastructure.data;
 
 import be.dontletit.infrastructure.data.entity.CardEntity;
 import be.dontletit.spi.CardData;
+import be.dontletit.spi.CardPrintingData;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -175,6 +176,40 @@ class PostgresCardRepositoryTest {
     @Transactional
     void getAllCards_empty_returnsEmptyList() {
         assertTrue(repository.getAllCards().isEmpty());
+    }
+
+    static CardPrintingData printing(String id, String name, String set, boolean promo, LocalDate releasedAt) {
+        return new CardPrintingData(id, name, "{R}", List.of("INSTANT"), List.of(), List.of(), "Deal 3 damage.", null, null,
+                "R", set, set.toUpperCase() + " set", "expansion", promo, releasedAt, "COMMON", "https://img/" + id + ".jpg");
+    }
+
+    @Test
+    void savePrintings_storesThem_andTheyReadBackAsOneCardPerName() {
+        repository.savePrintings(List.of(
+                printing("p1", "Lightning Bolt", "m11", false, LocalDate.of(2010, 7, 16)),
+                printing("p2", "Lightning Bolt", "lea", false, LocalDate.of(1993, 8, 5)),
+                printing("p3", "Lightning Bolt", "pbook", true, LocalDate.of(1990, 1, 1))));
+
+        List<CardData> cards = repository.getAllCards();
+
+        assertEquals(1, cards.size());
+        CardData bolt = cards.get(0);
+        assertEquals("p2", bolt.id(), "the earliest regular printing is the card");
+        assertEquals("lea", bolt.originalPrintedSet());
+        assertEquals("LEA set", bolt.originalPrintedSetName());
+        assertEquals(List.of("lea", "m11", "pbook"), bolt.sets());
+        assertEquals(List.of("INSTANT"), bolt.types());
+        assertEquals("https://img/p2.jpg", bolt.imgUrl());
+    }
+
+    @Test
+    void savePrintings_again_replacesThePrintingWithTheSameId() {
+        repository.savePrintings(List.of(printing("p1", "Lightning Bolt", "m11", false, LocalDate.of(2010, 7, 16))));
+        repository.savePrintings(List.of(printing("p1", "Lightning Bolt", "m10", false, LocalDate.of(2009, 7, 17))));
+
+        List<CardData> cards = repository.getAllCards();
+        assertEquals(1, cards.size());
+        assertEquals("m10", cards.get(0).originalPrintedSet());
     }
 
     private CardEntity buildEntity(String id, String name, List<String> types,

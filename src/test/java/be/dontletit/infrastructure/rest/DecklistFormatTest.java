@@ -1,4 +1,4 @@
-package be.dontletit.application;
+package be.dontletit.infrastructure.rest;
 
 import be.dontletit.api.CollectionEntryRequest;
 import org.junit.jupiter.api.Test;

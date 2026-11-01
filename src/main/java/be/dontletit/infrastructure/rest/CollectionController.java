@@ -6,8 +6,7 @@ import be.dontletit.api.CollectionEntryRequest;
 import be.dontletit.api.CollectionResponse;
 import be.dontletit.api.CollectionSummaryResponse;
 import be.dontletit.api.UnknownCardsException;
-import be.dontletit.application.DecklistFormat;
-import be.dontletit.domain.CollectionType;
+import be.dontletit.api.CollectionKind;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
@@ -99,10 +98,10 @@ public class CollectionController {
         return Response.created(location).entity(created).build();
     }
 
-    private static CollectionType parseType(String type) {
+    private static CollectionKind parseType(String type) {
         if (type == null) throw new BadRequestException("type is required: DECK, CUBE or MISC");
         try {
-            return CollectionType.valueOf(type.trim().toUpperCase());
+            return CollectionKind.valueOf(type.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Unknown collection type: " + type + " (expected DECK, CUBE or MISC)");
         }

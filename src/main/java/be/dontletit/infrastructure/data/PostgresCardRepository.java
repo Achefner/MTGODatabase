@@ -2,10 +2,12 @@ package be.dontletit.infrastructure.data;
 
 import be.dontletit.infrastructure.data.entity.CardEntity;
 import be.dontletit.spi.CardData;
+import be.dontletit.spi.CardPrintingData;
 import be.dontletit.spi.CardSpiPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
@@ -28,6 +30,37 @@ public class PostgresCardRepository implements CardSpiPort {
                 .stream()
                 .map(this::toData)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void savePrintings(List<CardPrintingData> printings) {
+        printings.stream().map(PostgresCardRepository::toEntity).forEach(em::merge);
+        em.flush();
+        em.clear();
+    }
+
+    private static CardEntity toEntity(CardPrintingData printing) {
+        CardEntity entity = new CardEntity();
+        entity.id = printing.id();
+        entity.name = printing.name();
+        entity.manaCost = printing.manaCost();
+        entity.types = printing.types();
+        entity.surtypes = printing.surtypes();
+        entity.subtypes = printing.subtypes();
+        entity.text = printing.text();
+        entity.power = printing.power();
+        entity.toughness = printing.toughness();
+        entity.colorIdentity = printing.colorIdentity();
+        entity.sets = printing.set() != null ? List.of(printing.set()) : List.of();
+        entity.originalPrintedSet = printing.set();
+        entity.setName = printing.setName();
+        entity.setType = printing.setType();
+        entity.promo = printing.promo();
+        entity.releasedAt = printing.releasedAt();
+        entity.rarity = printing.rarity();
+        entity.imgUrl = printing.imgUrl();
+        return entity;
     }
 
     private CardData toData(List<CardEntity> printings) {

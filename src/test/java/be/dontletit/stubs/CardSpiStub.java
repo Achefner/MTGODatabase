@@ -1,12 +1,27 @@
 package be.dontletit.stubs;
 
 import be.dontletit.spi.CardData;
+import be.dontletit.spi.CardPrintingData;
 import be.dontletit.spi.CardSpiPort;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 public class CardSpiStub implements CardSpiPort {
+
+    private final List<CardData> cards;
+
+    /** The sample cards below. */
+    public CardSpiStub() {
+        this(null);
+    }
+
+    /** Any cards; null means the sample cards. */
+    public CardSpiStub(List<CardData> cards) {
+        this.cards = cards;
+    }
+
 
     public static final CardData LIGHTNING_BOLT = new CardData(
             "lightning-bolt", "Lightning Bolt", "{R}",
@@ -42,6 +57,14 @@ public class CardSpiStub implements CardSpiPort {
 
     @Override
     public List<CardData> getAllCards() {
-        return ALL_CARDS;
+        return cards == null ? ALL_CARDS : cards;
+    }
+
+    /** Every batch handed to {@link #savePrintings}, in order. */
+    public final List<List<CardPrintingData>> savedBatches = new ArrayList<>();
+
+    @Override
+    public void savePrintings(List<CardPrintingData> printings) {
+        savedBatches.add(List.copyOf(printings));
     }
 }

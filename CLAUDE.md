@@ -33,20 +33,28 @@ Hexagonal architecture — domain is isolated from framework and infrastructure 
 ```
 be.dontletit/
 ├── domain/          # pure domain: Card, CardType; CardCollection, CollectionEntry, CollectionType (DECK/CUBE/MISC)
-├── api/             # inbound ports: CardApiPort, CollectionApiPort (+ request/response records, UnknownCardsException)
-├── spi/             # outbound ports: CardSpiPort (getAllCards), CollectionSpiPort (save/findAll/findById/delete) + data records
-├── application/     # CardApiAdapter, CollectionApiAdapter (name resolution, validation), CardMapping, DecklistFormat (text parse/format)
+├── api/             # inbound ports: CardApiPort, CollectionApiPort, CardImportApiPort (+ request/response records,
+│                    #   CollectionKind (the API's DECK/CUBE/MISC), ImportResultResponse, UnknownCardsException)
+├── spi/             # outbound ports: CardSpiPort (getAllCards, savePrintings), CollectionSpiPort (save/findAll/findById/delete),
+│                    #   CardCatalogSpiPort (readPrintings: the external catalog) + data records (CardData, CardPrintingData…)
+├── application/     # CardApiAdapter, CollectionApiAdapter (name resolution, validation, CollectionKind <-> CollectionType),
+│                    #   CardImportApiAdapter (catalog -> card store in batches of 500), CardMapping
 └── infrastructure/
-    ├── rest/        # CardController (/cards), CollectionController (/collections), ScryfallImportController (/admin/scryfall)
+    ├── rest/        # CardController (/cards), CollectionController (/collections), ScryfallImportController (/admin/scryfall),
+    │                #   DecklistFormat (the plain-text decklist wire format of /collections/import and /export)
     └── data/
         ├── PostgresCardRepository        # implements CardSpiPort — JPA-backed, active in dev/local/prod
         ├── PostgresCollectionRepository  # implements CollectionSpiPort — CollectionEntity + element collection of entries
-        ├── InMemoryCardRepository        # @DefaultBean fallback sample data, only used if no other CardSpiPort bean exists
+        ├── InMemoryCardRepository        # @DefaultBean fallback sample data (read-only), only used if no other CardSpiPort bean exists
         ├── entity/                       # CardEntity, CollectionEntity, CollectionEntryEmbeddable, StringListConverter
-        └── scryfall/                     # bulk import: ScryfallImportService, ScryfallCardMapper, JSON DTOs
+        └── scryfall/                     # ScryfallCatalog implements CardCatalogSpiPort; ScryfallCardMapper (JSON -> CardPrintingData), JSON DTOs
 ```
 
-**Dependency rule**: domain and ports have zero framework/infra imports. Only `application/` and `infrastructure/` touch Quarkus/Jakarta annotations.
+**Dependency rule**, enforced by `HexagonalArchitectureTest` (it reads the import lines of every
+main source file): domain and api depend on nothing else; spi only on the domain; application on
+the ports, the domain and CDI annotations, never on infrastructure; REST adapters reach the core
+only through the api ports; data adapters never touch api, application or rest. The API exposes
+its own types (e.g. `CollectionKind`), never domain ones.
 
 **Storage model**: one `CardEntity` row per Scryfall printing (id = Scryfall printing UUID), not per unique card name. `PostgresCardRepository.getAllCards()` groups rows by name and unions each printing's set into `CardData.sets()` — don't reintroduce a raw `FROM CardEntity` query without that grouping step or `sets` collapses back to one element per card. The canonical printing of a group (its `id`, `originalPrintedSet` + name/type, `firstPrintedAt`, `rarity`, `imgUrl`) is the earliest-released **non-promo** printing (promo flag first, then `releasedAt` nulls last, then id); promo printings (prerelease, judge, buy-a-box — Scryfall `promo: true`) only win when the card was never printed anywhere else. Without that rule prerelease promos, dated before the main set, become the "first set".
 
