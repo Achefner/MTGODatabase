@@ -3,6 +3,7 @@ package be.dontletit.infrastructure.data;
 import be.dontletit.infrastructure.data.entity.CardEntity;
 import be.dontletit.spi.CardData;
 import be.dontletit.spi.CardPrintingData;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -28,6 +29,7 @@ class PostgresCardRepositoryTest {
     @Transactional
     void cleanUp() {
         em.createQuery("DELETE FROM CardEntity").executeUpdate();
+        repository.invalidate();
     }
 
     @Test
@@ -181,6 +183,32 @@ class PostgresCardRepositoryTest {
     static CardPrintingData printing(String id, String name, String set, boolean promo, LocalDate releasedAt) {
         return new CardPrintingData(id, name, "{R}", List.of("INSTANT"), List.of(), List.of(), "Deal 3 damage.", null, null,
                 "R", set, set.toUpperCase() + " set", "expansion", promo, releasedAt, "COMMON", "https://img/" + id + ".jpg");
+    }
+
+    @Test
+    void getAllCards_isKeptInMemory_untilPrintingsAreSaved() {
+        repository.savePrintings(List.of(printing("p1", "Lightning Bolt", "lea", false, LocalDate.of(1993, 8, 5))));
+        assertEquals(1, repository.getAllCards().size());
+
+        QuarkusTransaction.requiringNew().run(() ->
+                em.persist(buildEntity("sneaky", "Sneaky Card", List.of("INSTANT"), List.of(), List.of(), null, null)));
+        assertEquals(1, repository.getAllCards().size(), "served from memory: a write behind the repository's back is not seen");
+
+        repository.savePrintings(List.of(printing("p2", "Counterspell", "lea", false, LocalDate.of(1993, 8, 5))));
+        assertEquals(3, repository.getAllCards().size(), "saving printings refreshes it once committed");
+    }
+
+    @Test
+    void getAllCards_sharesOneUnmodifiableList_untilInvalidated() {
+        repository.savePrintings(List.of(printing("p1", "Lightning Bolt", "lea", false, LocalDate.of(1993, 8, 5))));
+        List<CardData> first = repository.getAllCards();
+
+        assertSame(first, repository.getAllCards());
+        assertThrows(UnsupportedOperationException.class, () -> first.add(null));
+
+        repository.invalidate();
+        assertNotSame(first, repository.getAllCards());
+        assertEquals(first, repository.getAllCards());
     }
 
     @Test

@@ -7,21 +7,54 @@ import be.dontletit.spi.CardSpiPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import jakarta.transaction.Synchronization;
+import jakarta.transaction.TransactionSynchronizationRegistry;
 import jakarta.transaction.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+/**
+ * Cards in postgres, one row per printing. Folding the ~110k printings into one card per name takes
+ * over a second, and the catalog only changes on imports, so the folded list is kept in memory and
+ * dropped when printings are saved (once their transaction commits) or on {@link #invalidate()}.
+ */
 @ApplicationScoped
 public class PostgresCardRepository implements CardSpiPort {
 
     @Inject
     EntityManager em;
 
+    @Inject
+    TransactionSynchronizationRegistry transactions;
+
+    private volatile List<CardData> cards;
+    /** Bumped on every invalidation, so a load that started before one is not kept. */
+    private final AtomicLong generation = new AtomicLong();
+
     @Override
     public List<CardData> getAllCards() {
+        List<CardData> cached = cards;
+        if (cached != null) return cached;
+        synchronized (this) {
+            if (cards != null) return cards;
+            long loadingGeneration = generation.get();
+            List<CardData> loaded = load();
+            if (generation.get() == loadingGeneration) cards = loaded;
+            return loaded;
+        }
+    }
+
+    /** Forgets the folded list; the next read folds the printings again. For writes that bypass this repository. */
+    public void invalidate() {
+        generation.incrementAndGet();
+        cards = null;
+    }
+
+    private List<CardData> load() {
         return em.createQuery("FROM CardEntity", CardEntity.class)
                 .getResultList()
                 .stream()
@@ -38,6 +71,18 @@ public class PostgresCardRepository implements CardSpiPort {
         printings.stream().map(PostgresCardRepository::toEntity).forEach(em::merge);
         em.flush();
         em.clear();
+        invalidate();
+        transactions.registerInterposedSynchronization(new Synchronization() {
+            @Override
+            public void beforeCompletion() {
+                // nothing to do before the commit
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                invalidate(); // a read during the transaction may have folded the old rows
+            }
+        });
     }
 
     private static CardEntity toEntity(CardPrintingData printing) {

@@ -3,6 +3,7 @@ package be.dontletit.infrastructure.rest;
 import be.dontletit.infrastructure.data.entity.CardEntity;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import be.dontletit.infrastructure.data.PostgresCardRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +19,9 @@ class CollectionControllerTest {
 
     @Inject
     EntityManager em;
+
+    @Inject
+    PostgresCardRepository cards;
 
     @BeforeEach
     @Transactional
@@ -36,6 +40,7 @@ class CollectionControllerTest {
             e.manaCost = "{0}";
             em.persist(e);
         }
+        cards.invalidate();  // these cards were written behind the repository's back
     }
 
     @Test
